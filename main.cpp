@@ -3,12 +3,20 @@
 #include<iostream>
 #include<pcl/io/pcd_io.h>
 #include<pcl/point_types.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/xfeatures2d.hpp>
 #include<iostream>
 #include<math.h>
 #include <string> 
 #include<fstream> 
+#include"Bazier.h"
 #include "lasreader.hpp"
 #include "laswriter.hpp"
+#include <pcl/visualization/cloud_viewer.h>
+#include <vtkAutoInit.h>
+
+#define vtkRenderingCore_AUTOINIT 4(vtkInteractionStyle,vtkRenderingFreeType,vtkRenderingFreeType,vtkRenderingOpenGL) 
+#define vtkRenderingVolume_AUTOINIT 1(vtkRenderingVolumeOpenGL)
 
 #pragma once
 using namespace cv;
@@ -35,7 +43,7 @@ ptrtype readlas(string filepath)
 	p_gpsT = lasreader->point.get_gps_time();
 	while (lasreader->read_point() && j < count)
 	{
-		pointCloudPtr->points[j].x = lasreader->point.get_x();
+		pointCloudPtr->points[j].x = lasreader->point.get_x()-38000000;
 		pointCloudPtr->points[j].y = lasreader->point.get_y();
 		pointCloudPtr->points[j].z = lasreader->point.get_z();
 		pointCloudPtr->points[j].intensity = lasreader->point.get_gps_time();
@@ -63,7 +71,7 @@ int writelas(string filepath,ptrtype point_cloud)
 	lasHeader.y_offset = mls_rect->points[0].y + pmin.y;
 	lasHeader.z_offset = mls_rect->points[0].z + pmin.z;
 	*/
-	lasHeader.x_offset = point_cloud->points[0].x-38000000;
+	lasHeader.x_offset = point_cloud->points[0].x;
 	lasHeader.y_offset = point_cloud->points[0].y;
 	lasHeader.z_offset = point_cloud->points[0].z;
 	lasHeader.point_data_format = 3;
@@ -82,10 +90,10 @@ int writelas(string filepath,ptrtype point_cloud)
 	for (int j = 0; j < point_cloud->size(); j++)
 	{
 		// populate the point
-		lasPoint.set_x(point_cloud->points[j].x-38000000);
+		lasPoint.set_x(point_cloud->points[j].x);
 		lasPoint.set_y(point_cloud->points[j].y);
 		lasPoint.set_z(point_cloud->points[j].z);
-		lasPoint.set_intensity(0);
+		lasPoint.set_intensity(point_cloud->points[j].intensity);
 		lasPoint.set_point_source_ID(pts_sourceID);
 		lasPoint.set_gps_time(p_gpsT);
 		lasPoint.set_R(0);
@@ -100,7 +108,7 @@ int writelas(string filepath,ptrtype point_cloud)
 		lasWriter->update_inventory(&lasPoint);
 
 		//range
-		double x = point_cloud->points[j].x-38000000;
+		double x = point_cloud->points[j].x;
 		double y = point_cloud->points[j].y;
 		double z = point_cloud->points[j].z;
 		if (x < minX) minX = x;
@@ -155,7 +163,21 @@ void getFiles(string path, vector<string>& files)
 		_findclose(hFile);
 	}
 }
+void cloudvisual(ptrtype cloud, const char* name)
+{
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer(name));
 
+	pcl::visualization::PointCloudColorHandlerGenericField<ptype> fildColor(cloud, "z"); // 按照z字段进行渲染
+
+	viewer->addPointCloud<ptype>(cloud, fildColor, "sample cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud"); // 设置点云大小
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+	}
+}
 
 int main()
 {
@@ -175,7 +197,7 @@ int main()
 	*/
 	
 
-	string filePath = "G:\\pc_file\\车载+机载数据2018.1.8\\中南路\\车载las";//自己设置目录
+	string filePath = "G:\\pc_file\\las";//自己设置目录
 	vector<string> files;
 
 	////获取该路径下的所有文件
@@ -186,9 +208,11 @@ int main()
 	{
 		pcl::PointCloud<ptype>::Ptr pointCloudPtr(new pcl::PointCloud<ptype>);
 		pointCloudPtr=readlas(files[i].c_str());
+		//cloudvisual(pointCloudPtr, "1");
 		stringstream output_file;
-		output_file<< "G:\\pc_file\\车载+机载数据2018.1.8\\中南路\\车载las\\" << i << ".las";
+		output_file<< "G:\\pc_file\\las\\" << i << ".las";
 		writelas(output_file.str(), pointCloudPtr);
+		cout << i << endl;
 	}
 
 	return 0;
