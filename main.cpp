@@ -43,7 +43,7 @@ ptrtype readlas(string filepath)
 	p_gpsT = lasreader->point.get_gps_time();
 	while (lasreader->read_point() && j < count)
 	{
-		pointCloudPtr->points[j].x = lasreader->point.get_x()-38000000;
+		pointCloudPtr->points[j].x = lasreader->point.get_x();
 		pointCloudPtr->points[j].y = lasreader->point.get_y();
 		pointCloudPtr->points[j].z = lasreader->point.get_z();
 		pointCloudPtr->points[j].intensity = lasreader->point.get_gps_time();
